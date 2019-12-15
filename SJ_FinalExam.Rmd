@@ -1,0 +1,927 @@
+---
+title: "Final Exam"
+author: "Stephen (Scott) Jones"
+date: "12/12/2019"
+output:
+  rmdformats::readthedown:
+    code_folding: hide
+    highlight: kate
+---  
+<style type="text/css">
+a,
+a:visited {
+  color: #3498db;
+}
+a:hover,
+a:focus,
+a:active {
+  color: #2980b9;
+}
+pre {
+  background-color: #fafafa;
+  padding: 1rem;
+  text-align: left;
+  max-height: 150px;
+  float: left;
+  width: 100%;
+  overflow-y: auto;
+}
+blockquote {
+  margin: 0;
+  border-left: 5px solid #7a7a7a;
+  font-style: italic;
+  padding: 1.33em;
+  text-align: left;
+}
+pre.r {
+  max-height: none;
+}
+ul,
+ol,
+li {
+  text-align: left;
+}
+
+p {
+  color: #777;
+}
+h1.title {
+  color: DarkBlue;
+  font-weight: bold;
+}
+h1 { /* Header 1 */
+  color: DarkBlue;
+  font-weight: bold;
+}
+h2 { /* Header 2 */
+  color: DarkBlue;
+  font-weight: bold;
+}
+h3 { /* Header 3 */
+  color: DarkBlue;
+  font-weight: bold;
+}
+h4 { /* Header 3 */
+  color: DarkBlue;
+  font-weight: bold;
+}
+</style>  
+
+```{r setup, echo=FALSE, cache=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="75")
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE)
+opts_knit$set(width=75)
+```
+
+# Problem 1.  
+
+**Using R, generate a random variable X that has 10,000 random uniform numbers from 1 to N, where N can be any number of your choosing greater than or equal to 6.  Then generate a random variable Y that has 10,000 random normal numbers with a mean of $\mu=\sigma=\frac{N+1}{2}$.**  
+
+```{r message=FALSE,warning=FALSE}
+
+N = 46
+
+set.seed(1973)
+
+# random variable X
+X <- runif(10000, min = 1, max = N)
+
+# random variable Y
+Y = rnorm(10000, mean = (N+1)/2, sd = (N+1)/2)
+
+# x is median of X
+x <- median(X)
+
+# y is first quartile of Y
+y <- quantile(Y)[[2]]
+
+```
+
+## Probabilities  
+
+**Calculate as a minimum the below probabilities a through c.  Assume the small letter "x" is estimated as the median of the X variable, and the small letter "y" is estimated as the 1st quartile of the Y variable.  Interpret the meaning of all probabilities.**  
+
+### a. $P(X > x | X > y )$  
+
+```{r message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(dplyr)
+
+Xdf <- data.frame(value = as.numeric(X), stringsAsFactors = FALSE)
+
+cond_prob <- sum(Xdf > x & Xdf > y)/sum(Xdf > y)
+
+cat("The requested probability is",cond_prob[[1]])
+
+```
+
+### b. $P(X > x\text{ and } Y > y)$ 
+
+
+```{r message=FALSE, warning=FALSE}
+
+Ydf <- data.frame(value = as.numeric(Y), stringsAsFactors = FALSE)
+
+res_prob <- mean(Xdf$value > x) * mean(Ydf$value > y)
+
+cat("The requested probability is",res_prob)
+
+```
+
+### c. $P(X < x\text{ and } X > y )$  
+
+```{r message=FALSE, warning=FALSE}
+
+cond_prob2 <- mean(Xdf$value < x) * mean(Xdf$value > y)
+
+cat("The requested probability is",cond_prob2[[1]])
+
+```  
+
+## Marginal, Joint Probabilities  
+
+**Investigate whether $P(X>x\text{ and } Y>y)=P(X>x)P(Y>y)$ by building a table and evaluating the marginal and joint probabilities.**
+
+Contingency tables, one with counts and one with probabilities, are below.  
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+
+XYdf <- data.frame(cbind(Xdf$value,Ydf$value))
+
+colnames(XYdf) <- c('xval','yval')
+
+# compose dataframe with sums
+tb_XY <- data.frame(c(sum(XYdf$xval > x & XYdf$yval > y),
+                      sum(XYdf$xval <= x & XYdf$yval > y)),
+                    c(sum(XYdf$xval > x & XYdf$yval <= y),
+                      sum(XYdf$xval <= x & XYdf$yval <= y)),
+                    row.names=c('X > x','X <= x'))
+
+colnames(tb_XY) <- c('Y > y','Y <= y')
+
+library(kableExtra)
+
+tb_XY %>%
+  kable(align = "c", format = "html")%>%
+  kable_styling(bootstrap_options = c("striped", "hover"),full_width = F)%>%
+  column_spec(1, bold = T, border_right = T)%>%
+  column_spec(2, border_right = T)
+
+```
+
+**Marginal probabilities:**  
+
+$P(Y>y)=$ `r sum(tb_XY[,1])/10000`.  
+$P(Y\le y)=$ `r sum(tb_XY[,2])/10000`.  
+$P(X>x)=$ `r rowSums(tb_XY[1,])/10000`.  
+$P(X\le x)=$ `r rowSums(tb_XY[2,])/10000`.  
+
+**Joint probabilities:**  
+
+$P(X>x\text{ and }Y>y)=$ `r tb_XY[1,1]/10000`.  
+$P(X>x\text{ and }Y\le y)=$ `r tb_XY[1,2]/10000`.  
+$P(X\le x\text{ and }Y>y)=$ `r tb_XY[2,1]/10000`.  
+$P(X\le x\text{ and }Y\le y)=$ `r tb_XY[2,2]/10000`.  
+
+These probabilities are confirmed in the table below.  
+
+```{r message=FALSE,warning=FALSE}
+
+# calculate proportion
+tb_prop_XY <- tb_XY/10000
+
+tb_prop_XY %>%
+  kable(align = "c", format = "html", 
+        table.attr = 'class="table table-striped table-hover"')%>%
+  kable_styling(bootstrap_options = c("striped", "hover"),full_width = F)%>%
+  column_spec(1, bold = T, border_right = T)%>%
+  column_spec(2, border_right = T)
+
+```
+
+Further, the joint probability $P(X>x\text{ and }Y>y)=$ `r tb_XY[1,1]/10000`.  
+
+The product of marginal probabilities  
+
+$P(X>x)=$ `r rowSums(tb_XY[1,])/10000` and  
+$P(Y>y)=$ `r sum(tb_XY[,1])/10000` is  
+
+$P(X>x)P(Y>y)=$ `r (rowSums(tb_XY[1,])/10000)*(sum(tb_XY[,1])/10000)`.  
+
+## Fisher's, Chi-squared  
+
+**Check to see if independence holds by using Fisher’s Exact Test and the Chi Square Test.  What is the difference between the two? Which is most appropriate?**  
+
+Fisher's results:  
+
+```{r}
+
+library(stats)
+XY_matrix <- as.matrix(tb_XY)
+fisher.test(XY_matrix, alternative = "two.sided", hybrid = TRUE)
+
+```  
+
+Chi-squared results:  
+
+```{r}
+
+library(MASS)
+chisq.test(tb_XY)
+
+```  
+
+Fisher's Test is for 2-by-2 contingency tables; chi-square is appropriate when comparing two categorical variables 2 or more categories each.
+
+Since the p-value for both tests are equivalent and both greater than 0.05, **we do not reject the null hypothesis** of the test (the distribution of X is independent of the distribution of Y) at the 5% significance level. This is the expected result, as the variables were generated randomly and independently.  
+
+# Problem 2.  
+## Descriptives  
+
+**Provide univariate descriptive statistics and appropriate plots for the training data set.**  
+
+```{r}
+
+# allowing strings to be imported as factors
+hp_train <- read.csv('https://raw.githubusercontent.com/sigmasigmaiota/DATA605/master/train.csv', stringsAsFactors = FALSE)
+
+# omit the iterative ID column
+hp_train[,1] <- NULL
+
+```  
+
+Using `datatable` from `DT`:  
+
+```{r}
+
+library(psych)
+library(DT)
+datatable(describe(hp_train), options = list(pageLength = 5))
+
+```  
+
+## Scatterplot Matrix  
+
+**Provide a scatterplot matrix for at least two of the independent variables and the dependent variable.**  
+
+Using the plot above we selected three variables `OverallQual`, `TotRmsAbvGrd`, `GrLivArea`, and the dependent variable, `SalePrice`.  
+
+```{r}
+
+pairs(hp_train[c("OverallQual","TotRmsAbvGrd","GrLivArea","SalePrice")], pch = 19, lower.panel = NULL)
+
+```  
+
+## Correlation Matrix  
+
+**Derive a correlation matrix for any three quantitative variables in the dataset.**  
+
+Let's test for normality in the three variables. We'll render histograms and qqplots for the three variables, and follow with Shapiro-Wilkes and Kolmogorov Smirov tests for normality.  
+
+```{r}
+
+# create data frame with numeric variables
+nums <- unlist(lapply(hp_train, is.numeric))
+# replace NAs with 0s
+hp_train[is.na(hp_train)] <- 0
+hpnum_train <- hp_train[,nums]
+
+library(ggpubr)
+library(ggplot2)
+library(cowplot)
+
+p1<-ggplot(data=hpnum_train, aes(hpnum_train$OverallQual)) + 
+  geom_histogram()+
+  labs(title="OverallQual")
+p2<-ggplot(data=hpnum_train, aes(hpnum_train$GrLivArea)) + 
+  geom_histogram()+
+  labs(title="GrLivArea")
+p3<-ggplot(data=hpnum_train, aes(hpnum_train$TotRmsAbvGrd)) + 
+  geom_histogram()+
+  labs(title="TotRmsAbvGrd")
+p4<-ggqqplot(hpnum_train$OverallQual, ylab="OverallQual")
+p5<-ggqqplot(hpnum_train$GrLivArea, ylab="GrLivArea")
+p6<-ggqqplot(hpnum_train$TotRmsAbvGrd, ylab="TotRmsAbvGrd")
+
+plot_grid(p1,p2,p3,p4,p5,p6,nrow=2,ncol=3)
+
+```  
+
+`GrLivArea` clearly does not follow a normal distribution; while `OverallQual` seems to approximate a discrete normal distribution, `TotRmsAbvGrd` seems to deviate significantly. Test results below will confirm these observations.  
+
+```{r}
+
+cat("OverallQual:")
+shapiro.test(hpnum_train$OverallQual)
+ks.test(hpnum_train$OverallQual,pnorm)
+cat("GrLivArea:")
+shapiro.test(hpnum_train$GrLivArea)
+ks.test(hpnum_train$GrLivArea,pnorm)
+cat("TotRmsAbvGrd:")
+shapiro.test(hpnum_train$TotRmsAbvGrd)
+ks.test(hpnum_train$TotRmsAbvGrd,pnorm)
+
+```  
+
+According to our analyses, the variables are not normally distributed. This determines the method of the correlation tests; we'll use `method = "kendall"`, a nonparametric test.  
+
+```{r}
+
+library(corrplot)
+
+# obtain correlations
+TT <-cor(hpnum_train[c("OverallQual","TotRmsAbvGrd","GrLivArea")], method = "kendall")
+
+# plot correlation plot
+cex.before <- par("cex")
+par(cex = 0.9)
+corrplot(TT, insig = "blank", method = "color",
+    addCoef.col="grey", 
+    order = "AOE", tl.cex = 1/par("cex"),
+    cl.cex = 1/par("cex"), addCoefasPercent = TRUE)
+par(cex = cex.before)
+
+```  
+
+## Correlation Tests  
+
+**Test the hypotheses that the correlations between each pairwise set of variables is 0 and provide an 80% confidence interval.**  
+
+Because we are using a nonparametric test method, `cor.test` will test for significance at the .95 level.  
+
+```{r}  
+
+c_OG <- cor.test(hpnum_train$OverallQual, hpnum_train$GrLivArea,  method = "kendall", use = "complete.obs")
+c_OT <- cor.test(hpnum_train$OverallQual, hpnum_train$TotRmsAbvGrd,  method = "kendall", use = "complete.obs")
+c_TG <- cor.test(hpnum_train$TotRmsAbvGrd, hpnum_train$GrLivArea,  method = "kendall", use = "complete.obs")
+cat("Testing OverallQual and GrLivArea,    p-val:",c_OG$p.value,"   We reject the null hypothesis.\n")
+cat("Testing OverallQual and TotRmsAbvGrd, p-val:",c_OT$p.value,"    We reject the null hypothesis.\n")
+cat("Testing TotRmsAbvGrd and GrLivArea,   p-val:",c_TG$p.value,"   We reject the null hypothesis.")
+
+```  
+
+To produce the desired confidence intervals for Kendall tau we use `kendall.ci` from the package `NSM3` without the bootstrap option.
+
+```{r}
+
+library(NSM3)
+cat("OverallQual and GrLivArea:")
+kendall.ci(hpnum_train$OverallQual, hpnum_train$GrLivArea,alpha=0.20,type="t",bootstrap=F, example=F)
+cat("OverallQual and TotRmsAbvGrd:")
+kendall.ci(hpnum_train$OverallQual, hpnum_train$TotRmsAbvGrd,alpha=0.20,type="t",bootstrap=F, example=F)
+cat("TotRmsAbvGrd and GrLivArea:")
+kendall.ci(hpnum_train$TotRmsAbvGrd, hpnum_train$GrLivArea,alpha=0.20,type="t",bootstrap=F, example=F)
+
+```
+
+## Discussion  
+
+**Discuss the meaning of your analysis.  Would you be worried about familywise error? Why or why not?**  
+
+As expected, each of the confidence intervals do not span zero, confirming our rejection of the null hypothesis. Each of the pairs of variables are correlated. Given the meaning of each variable this result is logical. With these findings I would not be concerned with familywise error; even using the `Bonferroni` correction method, each of the p-values are much less than $0.05/3\approx 0.015$, confirming our original result.  
+
+## LU Decomposition  
+
+**Invert your correlation matrix from above. (This is known as the precision matrix and contains variance inflation factors on the diagonal.) Multiply the correlation matrix by the precision matrix, and then multiply the precision matrix by the correlation matrix. Conduct LU decomposition on the matrix.**  
+
+Let's check that the determinate does not equal zero.  
+
+```{r}  
+
+CM <- unname(as.matrix(TT))
+
+det(CM)
+
+```  
+
+Since the determinate does not equal zero, the inverse exists. We use the library `matlib` to find the inverse. The product of the correlation matrix and the precision matrix:  
+
+```{r}
+
+library(matlib)
+CMI <- inv(CM)
+CMCMI <- CM %*% CMI
+CMCMI
+cat("which is effectively\n")
+fractions(CMCMI)
+
+```  
+
+The product of the precision matrix and the correlation matrix:  
+
+```{r}
+
+CMI <- inv(CM)
+CMICM <- CMI %*% CM
+CMICM
+cat("which is effectively\n")
+fractions(CMICM)
+
+```  
+
+We'll obtain the lower and upper decompositions of the matrix and its inverse using the package `pracma`.  
+
+```{r}
+
+library(pracma)
+luCM <- lu(CM)
+luCMI <- lu(CMI)
+
+cat("Decomposition of the correlation matrix:\n")
+luCM
+cat("Decomposition of the inverse:\n")
+luCMI
+
+```
+
+## Exponential PDF  
+
+**Many times, it makes sense to fit a closed form distribution to data.  Select a variable in the Kaggle.com training dataset that is skewed to the right, shift it so that the minimum value is absolutely above zero if necessary.  Then load the `MASS` package and run `fitdistr` to fit an exponential probability density function.  (See  https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/fitdistr.html).**  
+
+According to the histogram of `GrLivArea` above, the variable is skewed to the right. The `MASS` package was loaded at an earlier point in this markdown. Let's test that the mean is greater than the median in the training set and the minimum value of the variable is greater than zero.  
+
+```{r}  
+
+mean(hp_train$GrLivArea) > median(hp_train$GrLivArea)
+min(hp_train$GrLivArea) > 0
+
+```  
+
+We'll use `fitdistr` to fit the pdf.  
+
+```{r}
+
+fitdistr(hp_train$GrLivArea, "exponential")
+
+```
+
+## $\lambda$ Histogram  
+
+**Find the optimal value of $\lambda$ for this distribution, and then take 1000 samples from this exponential distribution using this value (e.g., rexp(1000, $\lambda$)). Plot a histogram and compare it with a histogram of your original variable.**  
+
+```{r}
+
+fit <- fitdistr(hp_train$GrLivArea, "exponential")
+
+set.seed(1974)
+est_data <- rexp(1000, fit$estimate[1])      # unkonwn distribution parameters
+
+par(mfrow=c(1,2))
+hist(hp_train$GrLivArea, pch=20, breaks=50, prob=TRUE, col = "lightblue", ylim = c(0,.0008), xlim = c(0,9000))
+hist(est_data, pch=20, breaks=50, prob=TRUE, col = "orange", ylim = c(0,.0008), xlim = c(0,9000))
+
+```  
+
+The distributions look very different with the axes set for optimum comparison. To continue experimentation, I would try a truncated negative binomial distribution to approximate the original variable.  
+
+## CDF Percentiles  
+
+**Using the exponential pdf, find the 5th and 95th percentiles using the cumulative distribution function (CDF).**  
+
+For $x < 0, x=0$; for $x \ge 0$ we have:
+
+$$\begin{aligned}
+F(x;\lambda)= P(X\le x)&=\int_{0}^{x} \lambda e^{-\lambda x}\\
+&=\bigg[-e^{-\lambda x}\bigg]_0^{x}\\
+&=1 - e^{-\lambda x}\\
+\end{aligned}$$
+To find the 5th percentile:  
+
+$$\begin{aligned}
+F(x;0.000659864 )= P(X\le x)&=1 - e^{-0.000659864  x}=.05\\
+\implies 0.95 &= e^{-0.000659864  x}\\
+\log(0.95)&=-0.000659864  x\\
+x&=\frac{\log(95)}{-0.000659864}\\
+x&=77.73313\\
+\end{aligned}$$
+
+To find the 95th percentile:  
+
+$$\begin{aligned}
+F(x;0.000659864 )= P(X\le x)&=1 - e^{-0.000659864  x}=.95\\
+\implies 0.05 &= e^{-0.000659864  x}\\
+\log(0.05)&=-0.000659864  x\\
+x&=\frac{\log(05)}{-0.000659864}\\
+x&=4539.924\\
+\end{aligned}$$  
+
+Programmatically:  
+
+```{r}
+
+q <- seq(0.001,0.999,0.001)
+qexpFIT <- data.frame(Q=q, Quantile=qexp(q, rate=fit$estimate[1]))  
+cat("The 5th percentile:",qexpFIT[50,2],"\n")
+cat("The 95th percentile:",qexpFIT[950,2],"\n")
+
+```
+
+##  Empirical CI  
+
+**Also generate a 95% confidence interval from the empirical data, assuming normality.**  
+
+The data in `hp_train$GrLivArea` are not normally distributed; however, we will assume normality.  
+
+
+```{r}
+
+m <- mean(hp_train$GrLivArea)
+sdev <- sd(hp_train$GrLivArea)
+n <- length(hp_train$GrLivArea)
+error <- qnorm(0.975)*sdev/sqrt(n)
+lower <- m-error
+upper <- m+error
+
+cat("Assuming normality, the 95% confidence interval is (",lower,",",upper,")\n")
+
+```  
+
+**Finally, provide the empirical 5th percentile and 95th percentile of the data. Discuss.**  
+
+```{r}
+
+elow <- quantile(hp_train$GrLivArea, probs = 0.05)
+eupp <- quantile(hp_train$GrLivArea, probs = 0.95)
+
+cat("The empirical 5th and 95th percentiles are",elow,"and",eupp,"respectively.\n")
+
+```  
+
+The empirical 5th and 95th percentiles (848 and 2466.1) are quite different than the confidence intervals calculated while assuming normality (1488.509 and 1542.418). Our variable, `GrLivArea`, is not normally distributed. The mean is greater than the median; further, error, mean and standard deviation should be recalculated to estimate proper distribution, as there are many more observations with value lesser than the mean than there are greater than the mean.  
+
+Let's try the negative binomial distribution instead. A comparison of the histograms is below.  
+
+```{r}
+
+fit2 <- fitdistr(hp_train$GrLivArea, "negative binomial")
+
+set.seed(1975)
+est2_data <- rnegbin(1000, fit2$estimate[2],fit2$estimate[1])      # unknown distribution parameters
+
+par(mfrow=c(1,2))
+hist(hp_train$GrLivArea, pch=20, breaks=50, prob=TRUE, col = "lightblue", ylim = c(0,.0008), xlim = c(0,9000))
+hist(est2_data, pch=20, breaks=50, prob=TRUE, col = "red", ylim = c(0,.0008), xlim = c(0,9000))
+
+```  
+
+The fit is much better and the histograms closely resemble one another. Let's use these parameters to calculate the confidence interval.  
+
+```{r}
+
+# mean is calculated from the estimated parameter of the proposed model
+m2 <- fit2$estimate[2]
+# standard deviation is calculated from the estimated paramter of the proposed model
+sdev2 <- fit2$sd[2]
+n2 <- length(hp_train$GrLivArea)
+# we are estimating error following a negative binomial distribution, not a normal distribution
+error2 <- qnbinom(0.975, mu = m2, size = fit2$estimate[1])*sdev2/sqrt(n2)
+lower2 <- m2-error2
+upper2 <- m2+error2
+
+cat("Using the negative binomial parameters, the 95% confidence interval is (",lower2,",",upper2,")\n")
+
+```  
+
+Our estimated confidence interval (607.709,  2423.218) much more closely resembles the percentiles from the empirical data, 848 and 2466.1. Model estimation and fit improves drastically when the appropriate model is selected.  
+
+# Regression Result  
+
+**Build some type of multiple regression model and submit your model to the competition board.  Provide your complete model summary and results with analysis.  Report your Kaggle.com user name and score.**  
+
+```{r}
+
+p7<-ggplot(data=hp_train, aes(hp_train$SalePrice)) + 
+  geom_histogram()+
+  labs(title="SalePrice")
+p8<-ggqqplot(hp_train$SalePrice, ylab="SalePrice")
+
+plot_grid(p7,p8)
+
+```
+
+Let's use the `descdist` rendering to suggest a distribution for the dependent variable.  
+
+```{r}
+
+library(fitdistrplus)
+
+descdist(hp_train$SalePrice, discrete=FALSE, boot=1000)
+
+```  
+
+From the figure above, it looks as if the lognormal distribution most closely approximates the empirical values in our data. Let's compare with negative binomial.  
+
+```{r}
+
+fit_ln <- fitdist(hp_train$SalePrice, "lnorm")
+fit_nb <- fitdist(hp_train$SalePrice, "nbinom")
+
+par(mfrow=c(2,2))
+plot.legend <- c("lognormal", "neg bin")
+denscomp(list(fit_ln, fit_nb), legendtext = plot.legend)
+cdfcomp (list(fit_ln, fit_nb), legendtext = plot.legend)
+qqcomp  (list(fit_ln, fit_nb), legendtext = plot.legend)
+ppcomp  (list(fit_ln, fit_nb), legendtext = plot.legend)
+
+```
+
+We'll select a lognormal distribution, as the negative binomial distribution fit underperforms.  
+
+```{r}
+
+# create transformed variable in the numeric-only dataset and the original dataset
+hpnum_train$log_SalePrice <- log1p(hpnum_train$SalePrice)
+hp_train$log_SalePrice <- log1p(hp_train$SalePrice)
+
+hpnum_train$SalePrice <- NULL
+hp_train$SalePrice <- NULL
+
+p9<-ggplot(data=hpnum_train, aes(hpnum_train$log_SalePrice))+
+  geom_histogram()+
+  labs(title="Log SalePrice")
+p10<-ggqqplot(hpnum_train$log_SalePrice, ylab="Log SalePrice")
+
+plot_grid(p9,p10)
+
+```
+
+The transformation results in a nearly normal distribution. Let's fit a model with the numeric variables.  
+
+#### Method: "stepAIC"  
+
+We begin by starting over with a fresh dataset and imputing missing values in the numeric variables.  
+
+```{r}
+
+# do not allow strings to be imported as factors
+hp_train <- read.csv('https://raw.githubusercontent.com/sigmasigmaiota/DATA605/master/train.csv', stringsAsFactors = FALSE)
+
+# omit the iterative ID column
+hp_train[,1] <- NULL
+
+```  
+
+Before imputing missing data we assess the percentage of missing in each variable and omit those missing more than 7% in observations.  
+
+```{r}
+
+options(max.print=1000000)
+pMiss <- function(x){sum(is.na(x))/length(x)*100}
+apply(hp_train,2,pMiss)
+#apply(hp_train,1,pMiss)
+
+```  
+
+Let's eliminate the variables missing more than 7%.  
+
+```{r}
+
+drop <- c('FireplaceQu','GarageType','PoolQC','MiscFeature','Fence','LotFrontage','Alley')
+hp_train = hp_train[,!(names(hp_train) %in% drop)]
+
+# create data frame with numeric variables
+nums <- unlist(lapply(hp_train, is.numeric))
+hpnum_train <- hp_train[,nums]
+
+# create transformed variable in the numeric-only dataset and the original dataset
+hpnum_train$log_SalePrice <- log1p(hpnum_train$SalePrice)
+hp_train$log_SalePrice <- log1p(hp_train$SalePrice)
+
+hpnum_train$SalePrice <- NULL
+hp_train$SalePrice <- NULL
+
+```  
+
+Let's impute the missing data using the `MICE` package.  
+
+```{r}
+
+library(mice)
+tempData <- mice(hpnum_train,m=5,maxit=50,meth='pmm',seed=500)
+summary(tempData)
+completedData <- complete(tempData,1)
+
+```
+Rename the dataframe.  
+
+```{r}
+
+hpnum_train <- completedData
+
+```
+
+Train the model using `lm`.  
+
+#### Method: "stepAIC", Numeric Variables  
+
+```{r}
+
+# Fit the full model using stepAIC
+model1 <- lm(log_SalePrice ~., data = hpnum_train)
+# Stepwise regression model
+model1_step <- stepAIC(model1, direction = "both", 
+                      trace = FALSE)
+summary(model1_step)
+```  
+
+#### Method: "leapBackward", Numeric Variables  
+
+```{r}
+
+set.seed(1977)
+library(caret)
+library(parallel)
+library(doParallel)
+
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 5, allowParallel = TRUE)
+
+nv <- ncol(hpnum_train)-10 
+
+# Train the model
+step.model <- train(log_SalePrice ~., data = hpnum_train,
+                    method = "leapBackward",
+                    tuneGrid = data.frame(nvmax = 20:nv),
+                    trControl = train.control
+                    )
+step.model$results
+
+stopCluster(cluster)
+
+```  
+
+Let's eliminate some string variables from the larger dataset and recode them as numeric. Recoding will be accomplished with `fastDummies` function `dummy_cols`.  
+
+```{r}
+
+library(fastDummies)
+# create list of character variables 
+is_char <- unlist(colnames(hp_train[,sapply(hp_train, is.character)]))
+
+# remove all spaces from character variables in dataframe
+hpchar_train <- as.data.frame(apply(hp_train[,is_char],2,function(x)gsub('\\s+', '',x)),stringsAsFactors = FALSE)
+
+# reassemble
+hp_train <- data.frame(hpnum_train, hpchar_train)
+
+# create dummy variables for each, eliminating the referant, defined as the most frequent of each nominal level 
+hp_train2 <- dummy_columns(hp_train, select_columns = is_char, remove_most_frequent_dummy = TRUE, ignore_na = FALSE)
+
+names(hp_train2)[names(hp_train2)=="MSZoning_C(all)"] <- "MSZoning_CAll"
+names(hp_train2)[names(hp_train2)=="RoofMatl_Tar&Grv"] <- "RoofMatl_TarGrv"
+
+# remove the character variables from the dataset
+hp_train_final <- hp_train2[,!sapply(hp_train2, is.character)]
+
+```
+
+#### Method: "bayesglm" with Recoded Variables
+
+With all recoding done we'll rerun the models to assess whether we can achieve a better fit. With the `bayesglm` method from `caret`:  
+
+```{r}
+
+set.seed(1981)
+# parallel processing set again for clarity in code
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 5, savePred = TRUE, allowParallel = TRUE)
+# Train the model
+step.model2 <- train(log_SalePrice ~., data = hp_train_final,
+                    method = "bayesglm",
+                    trControl = train.control,
+                    na.action = na.pass
+                    )
+step.model2$results
+
+stopCluster(cluster)
+
+```  
+
+
+RMSE is smaller, and $R^2$ is quite high; with this many variables we've probably overfit the model, but for RMSE we have an improvement over the model that included only the numeric variables.
+
+## Final Model  
+
+#### Method: "stepAIC" with Recoded Variables  
+
+```{r}
+
+hp_train_final[is.na(hp_train_final)] <- 0
+
+set.seed(1980)
+# Fit the full model using stepAIC
+model3 <- lm(log_SalePrice ~., data = hp_train_final)
+# Stepwise regression model
+step.model3 <- stepAIC(model3, direction = "both", 
+                      trace = FALSE)
+summary(step.model3)
+
+```  
+
+This is the bestmodel by far, tho it includes several nonsignificant coefficients from recoded string variables. $R^2$ at 94% indicates adequate fit and residuals are symmetric. P-value is significant, but the degrees of freedom are quite low.
+
+The goal was to allow R to select the model programatically. Let's test these two models with the test set.  
+
+```{r}
+
+# allowing strings to be imported as factors
+hp_test <- read.csv('https://raw.githubusercontent.com/sigmasigmaiota/DATA605/master/test.csv', stringsAsFactors = FALSE)
+
+# create data frame with numeric variables
+nums2 <- unlist(lapply(hp_test, is.numeric))
+# replace NAs with 0s
+hp_test[is.na(hp_test)] <- 0
+hpnum_test <- hp_test[,nums2]
+
+# create list of character variables 
+is_char2 <- colnames(hp_test[,sapply(hp_test, is.character)])
+
+# remove all spaces from character variables in dataframe
+hpchar_test <- as.data.frame(apply(hp_test[,is_char2],2,function(x)gsub('\\s+', '',x)),stringsAsFactors = FALSE)
+
+# reassemble
+hp_test <- data.frame(hpnum_test, hpchar_test)
+
+# create dummy variables for each, eliminating the referant, defined as the most frequent of each nominal level 
+hp_test2 <- dummy_columns(hp_test, select_columns = is_char2, ignore_na = FALSE)
+
+names(hp_test2)[names(hp_test2)=="MSZoning_C(all)"] <- "MSZoning_CAll"
+names(hp_test2)[names(hp_test2)=="RoofMatl_Tar&Grv"] <- "RoofMatl_TarGrv"
+
+# some variable levels found in the training set are not present in the testing set. In order to proceed, we must include these variables and set value to zero.
+hp_test2$Condition2_RRAe <- 0
+hp_test2$Condition2_RRAn <- 0
+hp_test2$HouseStyle_2.5Fin <- 0
+hp_test2$RoofMatl_Metal <- 0
+hp_test2$RoofMatl_Membran <- 0
+hp_test2$RoofMatl_ClyTile <- 0
+hp_test2$Electrical_Mix <- 0
+hp_test2$GarageQual_Ex <- 0
+#hp_test2$PoolQC_Fa <- 0
+hp_test2$Utilities_NoSeWa <- 0
+hp_test2$Condition2_RRNn <- 0
+hp_test2$RoofMatl_TarGrv <- 0
+hp_test2$RoofMatl_Roll <- 0
+hp_test2$Exterior1st_Stone <- 0
+hp_test2$Exterior2nd_Other <- 0
+hp_test2$Heating_OthW <- 0
+hp_test2$Heating_Floor <- 0
+hp_test2$Electrical_0 <- 0
+#hp_test2$MiscFeature_TenC <- 0
+hp_test2$Exterior1st_ImStucc <- 0
+
+# remove al variables not found in the model
+#keep_test1 <- names(coef(step.model2$finalModel, step.model2$bestTune$nvmax))[-1]
+keep_test1 <- names(coef(step.model2$finalModel))[-1]
+keep_test2 <- coef(step.model3$finalModel)[-1]
+
+# predict with the model
+prd1 <- predict(step.model2, hp_test2)
+prd2 <- predict(step.model3, hp_test2)
+
+```  
+
+We'll bind the predictions with the `Id` variable from the test set.  
+
+```{r}
+
+# since we are predicting log-transformed data, the results must be transformed again
+sol1 <- data.frame(cbind(hp_test2$Id,exp(prd1)))
+colnames(sol1) <- c("Id","SalePrice")
+# formerly 4
+write.csv(sol1, "C:/Users/steph/Documents/KaggleR/SJPredictions_hp4.csv", row.names = FALSE)
+
+# since we are predicting log-transformed data, the results must be transformed again
+sol2 <- data.frame(cbind(hp_test2$Id,exp(prd2)))
+colnames(sol2) <- c("Id","SalePrice")
+# formerly 3
+write.csv(sol2, "C:/Users/steph/Documents/KaggleR/SJPredictions_hp5.csv", row.names = FALSE)
+
+```  
+
+**Kaggle username: stephensjones; Display name: Stephen S Jones**  
+
+My first submission score was 0.14179, number 3009 on the leaderboard.
+A second attempt yielded a score of 0.14343; wrong direction!
+Third attempt: 0.18616; wrong direction.
+Fourth (and final) attempt: 0.13288, 2317 on the leaderboard.
+
+The `stepAIC` model with `lm` yielded the best results, though `caret` was much faster with parallel processing options improving efficiency. Imputation amond numeric variables decreased residuals slightly.
+
+The final regression model is included above.  
+
+
+
